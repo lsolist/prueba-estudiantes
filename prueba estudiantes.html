@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trivia Estudiantil</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f8ff;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+    }
+    .question {
+      font-size: 1.2em;
+      margin-bottom: 15px;
+    }
+    .options button {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      font-size: 1em;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .options button.correct {
+      background-color: #c8e6c9;
+      border-color: #388e3c;
+      color: #2e7d32;
+    }
+    .options button.incorrect {
+      background-color: #ffcdd2;
+      border-color: #d32f2f;
+      color: #c62828;
+    }
+    #nextBtn {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #2196f3;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    #nextBtn.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #result {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container animate__animated animate__fadeIn">
+    <h1>Trivia de Conocimientos Generales</h1>
+    <div id="quiz">
+      <div class="question" id="question"></div>
+      <div class="options" id="options"></div>
+      <button id="nextBtn">Siguiente</button>
+    </div>
+    <div id="result" style="display:none;"></div>
+  </div>
+
+  <audio id="sound-correct" src="https://www.myinstants.com/media/sounds/correct-answer.mp3"></audio>
+  <audio id="sound-wrong" src="https://www.myinstants.com/media/sounds/wrong-answer.mp3"></audio>
+  <audio id="sound-end" src="https://www.myinstants.com/media/sounds/success-fanfare-trumpets.mp3"></audio>
+
+  <script>
+    const preguntas = [
+      {
+        pregunta: "¿Cuál es el planeta más cercano al Sol?",
+        opciones: ["Venus", "Tierra", "Mercurio", "Marte"],
+        respuesta: 2
+      },
+      {
+        pregunta: "¿Quién escribió 'Cien años de soledad'?",
+        opciones: ["Pablo Neruda", "Gabriel García Márquez", "Mario Vargas Llosa", "Isabel Allende"],
+        respuesta: 1
+      },
+      {
+        pregunta: "¿Cuál es el río más largo del mundo?",
+        opciones: ["Amazonas", "Nilo", "Yangtsé", "Misisipi"],
+        respuesta: 1
+      },
+      {
+        pregunta: "¿Cuántos lados tiene un hexágono?",
+        opciones: ["5", "6", "7", "8"],
+        respuesta: 1
+      },
+      {
+        pregunta: "¿Cuál es la capital de Japón?",
+        opciones: ["Kioto", "Pekín", "Seúl", "Tokio"],
+        respuesta: 3
+      },
+      {
+        pregunta: "¿Qué gas respiramos principalmente?",
+        opciones: ["Dióxido de carbono", "Hidrógeno", "Oxígeno", "Nitrógeno"],
+        respuesta: 3
+      },
+      {
+        pregunta: "¿Quién pintó la Mona Lisa?",
+        opciones: ["Van Gogh", "Picasso", "Da Vinci", "Miguel Ángel"],
+        respuesta: 2
+      },
+      {
+        pregunta: "¿Cuál es el idioma más hablado del mundo?",
+        opciones: ["Inglés", "Hindi", "Chino mandarín", "Español"],
+        respuesta: 2
+      },
+      {
+        pregunta: "¿Qué animal es conocido como el rey de la selva?",
+        opciones: ["Elefante", "Tigre", "León", "Jaguar"],
+        respuesta: 2
+      },
+      {
+        pregunta: "¿Cuál es el símbolo químico del agua?",
+        opciones: ["O2", "H2O", "CO2", "NaCl"],
+        respuesta: 1
+      }
+    ];
+
+    let indice = 0;
+    let puntaje = 0;
+
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const nextBtn = document.getElementById("nextBtn");
+    const resultEl = document.getElementById("result");
+
+    const sndCorrect = document.getElementById("sound-correct");
+    const sndWrong = document.getElementById("sound-wrong");
+    const sndEnd = document.getElementById("sound-end");
+
+    function mostrarPregunta() {
+      const q = preguntas[indice];
+      questionEl.textContent = q.pregunta;
+      optionsEl.innerHTML = "";
+      nextBtn.classList.remove("active");
+      nextBtn.disabled = true;
+
+      q.opciones.forEach((opcion, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = opcion;
+        btn.addEventListener("click", () => seleccionarRespuesta(i, btn));
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function seleccionarRespuesta(i, btnSeleccionado) {
+      const botones = optionsEl.querySelectorAll("button");
+      botones.forEach(btn => btn.disabled = true);
+      const correcta = preguntas[indice].respuesta;
+
+      if (i === correcta) {
+        btnSeleccionado.classList.add("correct");
+        puntaje++;
+        sndCorrect.play();
+      } else {
+        btnSeleccionado.classList.add("incorrect");
+        botones[correcta].classList.add("correct");
+        sndWrong.play();
+      }
+      nextBtn.classList.add("active");
+      nextBtn.disabled = false;
+    }
+
+    nextBtn.addEventListener("click", () => {
+      indice++;
+      if (indice < preguntas.length) {
+        mostrarPregunta();
+      } else {
+        mostrarResultado();
+      }
+    });
+
+    function mostrarResultado() {
+      document.getElementById("quiz").style.display = "none";
+      sndEnd.play();
+      resultEl.style.display = "block";
+
+      let retro = "";
+      if (puntaje === 10) {
+        retro = "¡Excelente! ¡Dominaste esta trivia! 🎉";
+      } else if (puntaje >= 7) {
+        retro = "¡Muy bien hecho! Sigue así. 💪";
+      } else if (puntaje >= 4) {
+        retro = "¡Bien! Pero puedes mejorar. ¡Sigue estudiando! 📘";
+      } else {
+        retro = "¡Ánimo! Inténtalo de nuevo. 💡";
+      }
+
+      resultEl.innerHTML = `
+        <h2>Resultado Final</h2>
+        <p>Obtuviste <strong>${puntaje}</strong> de <strong>${preguntas.length}</strong> preguntas correctas.</p>
+        <p>${retro}</p>
+      `;
+    }
+
+    mostrarPregunta();
+  </script>
+</body>
+</html>
